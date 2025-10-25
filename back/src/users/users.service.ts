@@ -16,11 +16,17 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Get or create the default 'user' role
-    const userRole = await this.prisma.role.upsert({
-      where: { name: 'user' },
+    // Check if this is the first user in the system
+    const userCount = await this.prisma.user.count();
+    const isFirstUser = userCount === 0;
+
+    // First user gets admin role, subsequent users get user role
+    const roleName = isFirstUser ? 'admin' : 'user';
+    
+    const role = await this.prisma.role.upsert({
+      where: { name: roleName },
       update: {},
-      create: { name: 'user' },
+      create: { name: roleName },
     });
 
     const user = await this.prisma.user.create({
@@ -28,10 +34,11 @@ export class UsersService {
         username,
         email,
         passwordHash,
-        roleId: userRole.id,
+        roleId: role.id,
       },
       include: { role: true },
     });
+    
     return { 
       id: user.id, 
       username: user.username, 

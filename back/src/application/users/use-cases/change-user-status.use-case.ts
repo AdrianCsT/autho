@@ -27,12 +27,12 @@ export class ChangeUserStatusUseCase {
       case 'INACTIVE':
         user.deactivate();
         // Revoke all refresh tokens when deactivating
-        await this.tokenService.revokeAllUserRefreshTokens(userId);
+        await this.tokenService.revokeUserTokens(userId);
         break;
       case 'SUSPENDED':
         user.suspend();
         // Revoke all refresh tokens when suspending
-        await this.tokenService.revokeAllUserRefreshTokens(userId);
+        await this.tokenService.revokeUserTokens(userId);
         break;
     }
 

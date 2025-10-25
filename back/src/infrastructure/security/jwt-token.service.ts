@@ -5,7 +5,7 @@ import {
   ITokenService,
   TokenPayload,
   RefreshTokenData,
-} from '../../../domain/interfaces/services/token-service.interface';
+} from '../../domain/interfaces/services/token-service.interface';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -29,7 +29,7 @@ export class JwtTokenService implements ITokenService {
   async generateAccessToken(payload: TokenPayload): Promise<string> {
     return this.jwtService.sign(payload, {
       secret: this.accessTokenSecret,
-      expiresIn: this.accessTokenExpiration,
+      expiresIn: this.accessTokenExpiration as any,
     });
   }
 
@@ -53,7 +53,7 @@ export class JwtTokenService implements ITokenService {
       { sub: userId },
       {
         secret: this.refreshTokenSecret,
-        expiresIn: this.refreshTokenExpiration,
+        expiresIn: this.refreshTokenExpiration as any,
       },
     );
   }
@@ -67,7 +67,7 @@ export class JwtTokenService implements ITokenService {
       // For refresh tokens, we need to fetch the user to get full payload
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        include: { roles: true },
+        include: { role: true },
       });
 
       if (!user) {
@@ -77,7 +77,7 @@ export class JwtTokenService implements ITokenService {
       return {
         sub: user.id,
         username: user.username,
-        roles: user.roles.map((r) => r.role),
+        roles: [user.role.name],
       };
     } catch (error) {
       throw new Error('Invalid refresh token');
@@ -87,7 +87,7 @@ export class JwtTokenService implements ITokenService {
   async saveRefreshToken(userId: string, token: string, expiresAt: Date): Promise<RefreshTokenData> {
     const refreshToken = await this.prisma.refreshToken.create({
       data: {
-        token,
+        tokenHash: token, // Store the token hash
         userId,
         expiresAt,
       },
@@ -95,7 +95,7 @@ export class JwtTokenService implements ITokenService {
 
     return {
       id: refreshToken.id,
-      token: refreshToken.token,
+      token: refreshToken.tokenHash,
       userId: refreshToken.userId,
       expiresAt: refreshToken.expiresAt,
       createdAt: refreshToken.createdAt,
@@ -103,8 +103,8 @@ export class JwtTokenService implements ITokenService {
   }
 
   async findRefreshToken(token: string): Promise<RefreshTokenData | null> {
-    const refreshToken = await this.prisma.refreshToken.findUnique({
-      where: { token },
+    const refreshToken = await this.prisma.refreshToken.findFirst({
+      where: { tokenHash: token },
     });
 
     if (!refreshToken) {
@@ -113,22 +113,36 @@ export class JwtTokenService implements ITokenService {
 
     return {
       id: refreshToken.id,
-      token: refreshToken.token,
+      token: refreshToken.tokenHash,
       userId: refreshToken.userId,
       expiresAt: refreshToken.expiresAt,
       createdAt: refreshToken.createdAt,
     };
   }
 
+  async isTokenRevoked(token: string): Promise<boolean> {
+    const refreshToken = await this.prisma.refreshToken.findFirst({
+      where: { tokenHash: token },
+    });
+
+    return refreshToken ? refreshToken.revoked : true;
+  }
+
   async revokeRefreshToken(token: string): Promise<void> {
-    await this.prisma.refreshToken.delete({
-      where: { token },
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: token },
+      data: { revoked: true },
     });
   }
 
   async revokeAllUserRefreshTokens(userId: string): Promise<void> {
-    await this.prisma.refreshToken.deleteMany({
+    await this.prisma.refreshToken.updateMany({
       where: { userId },
+      data: { revoked: true },
     });
+  }
+
+  async revokeUserTokens(userId: string): Promise<void> {
+    return this.revokeAllUserRefreshTokens(userId);
   }
 }

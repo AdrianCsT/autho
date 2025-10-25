@@ -1,39 +1,39 @@
 import { Injectable } from '@nestjs/common';
-import { User as PrismaUser, UserRole as PrismaUserRole } from '@prisma/client';
+import { User as PrismaUser, Role as PrismaRole } from '@prisma/client';
 import { IUserRepository } from '../../../domain/interfaces/repositories/user.repository.interface';
 import { UserEntity, UserStatus } from '../../../domain/entities/user.entity';
 import { Email } from '../../../domain/value-objects/email.vo';
 import { PrismaService } from '../prisma.service';
 
-type PrismaUserWithRoles = PrismaUser & { roles: PrismaUserRole[] };
+type PrismaUserWithRole = PrismaUser & { role: PrismaRole };
 
 @Injectable()
 export class UserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private toDomain(prismaUser: PrismaUserWithRoles): UserEntity {
+  private toDomain(prismaUser: PrismaUserWithRole): UserEntity {
     return UserEntity.reconstitute({
       id: prismaUser.id,
       username: prismaUser.username,
       email: Email.create(prismaUser.email),
       passwordHash: prismaUser.passwordHash,
-      roles: prismaUser.roles.map(r => r.role),
+      roles: [prismaUser.role.name],
       status: prismaUser.status as UserStatus,
       createdAt: prismaUser.createdAt,
       updatedAt: prismaUser.updatedAt,
     });
   }
 
-  private includeRoles() {
+  private includeRole() {
     return {
-      roles: true,
+      role: true,
     };
   }
 
   async findById(id: string): Promise<UserEntity | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return user ? this.toDomain(user) : null;
@@ -42,7 +42,7 @@ export class UserRepository implements IUserRepository {
   async findByUsername(username: string): Promise<UserEntity | null> {
     const user = await this.prisma.user.findUnique({
       where: { username },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return user ? this.toDomain(user) : null;
@@ -51,7 +51,7 @@ export class UserRepository implements IUserRepository {
   async findByEmail(email: string): Promise<UserEntity | null> {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return user ? this.toDomain(user) : null;
@@ -65,7 +65,7 @@ export class UserRepository implements IUserRepository {
           { email: identifier },
         ],
       },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return user ? this.toDomain(user) : null;
@@ -73,15 +73,24 @@ export class UserRepository implements IUserRepository {
 
   async findAll(): Promise<UserEntity[]> {
     const users = await this.prisma.user.findMany({
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
-    return users.map(user => this.toDomain(user));
+    return users.map((user: PrismaUserWithRole) => this.toDomain(user));
   }
 
   async create(user: UserEntity): Promise<UserEntity> {
     const persistence = user.toPersistence();
-    const roles = user.roles;
+    const roleName = user.roles[0]; // Get first role name
+
+    // Find the role by name
+    const role = await this.prisma.role.findUnique({
+      where: { name: roleName },
+    });
+
+    if (!role) {
+      throw new Error(`Role ${roleName} not found`);
+    }
 
     const createdUser = await this.prisma.user.create({
       data: {
@@ -89,11 +98,9 @@ export class UserRepository implements IUserRepository {
         email: persistence.email,
         passwordHash: persistence.passwordHash,
         status: persistence.status,
-        roles: {
-          create: roles.map(role => ({ role })),
-        },
+        roleId: role.id,
       },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return this.toDomain(createdUser);
@@ -101,12 +108,16 @@ export class UserRepository implements IUserRepository {
 
   async update(user: UserEntity): Promise<UserEntity> {
     const persistence = user.toPersistence();
-    const roles = user.roles;
+    const roleName = user.roles[0]; // Get first role name
 
-    // Delete existing roles and create new ones
-    await this.prisma.userRole.deleteMany({
-      where: { userId: user.id },
+    // Find the role by name
+    const role = await this.prisma.role.findUnique({
+      where: { name: roleName },
     });
+
+    if (!role) {
+      throw new Error(`Role ${roleName} not found`);
+    }
 
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
@@ -116,11 +127,9 @@ export class UserRepository implements IUserRepository {
         passwordHash: persistence.passwordHash,
         status: persistence.status,
         updatedAt: persistence.updatedAt,
-        roles: {
-          create: roles.map(role => ({ role })),
-        },
+        roleId: role.id,
       },
-      include: this.includeRoles(),
+      include: this.includeRole(),
     });
 
     return this.toDomain(updatedUser);

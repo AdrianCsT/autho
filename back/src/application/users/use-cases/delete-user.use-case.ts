@@ -19,8 +19,13 @@ export class DeleteUserUseCase {
       throw new NotFoundException('User not found');
     }
 
-    // Revoke all refresh tokens
-    await this.tokenService.revokeAllUserRefreshTokens(userId);
+    // Revoke all refresh tokens (best effort)
+    try {
+      await this.tokenService.revokeUserTokens(userId);
+    } catch (error) {
+      // Log error but continue with deletion
+      console.error('Failed to revoke tokens:', error);
+    }
 
     // Delete user
     await this.userRepository.delete(userId);

@@ -24,6 +24,8 @@ export interface ITokenService {
   // Refresh token persistence
   saveRefreshToken(userId: string, token: string, expiresAt: Date): Promise<RefreshTokenData>;
   findRefreshToken(token: string): Promise<RefreshTokenData | null>;
+  isTokenRevoked(token: string): Promise<boolean>;
   revokeRefreshToken(token: string): Promise<void>;
   revokeAllUserRefreshTokens(userId: string): Promise<void>;
+  revokeUserTokens(userId: string): Promise<void>;
 }

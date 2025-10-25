@@ -64,7 +64,70 @@
 <!-- About the Project -->
 ## :star2: About the Project
 
-**Autho** is a production-ready authentication system built with modern technologies and best practices. It provides a complete solution for user authentication, authorization, and management with enterprise-level security features.
+# Autho - Authentication Boilerplate
+
+A production-ready authentication system built with NestJS, Next.js, and Clean Architecture principles.
+
+## ✨ Key Features
+
+- **🔐 Complete Authentication:** Login, Register, Logout, Token Refresh, Session Management
+- **👥 Role-Based Access Control (RBAC):** Admin, User, and custom roles
+- **🏗️ Clean Architecture:** Domain-driven design with clear separation of concerns
+- **🛡️ Security First:** JWT tokens, HTTP-only cookies, password hashing, rate limiting
+- **📝 Auto-Admin:** First registered user automatically becomes admin
+- **🧪 100% Test Coverage:** Comprehensive test suite with Jest
+- **📚 API Documentation:** Interactive Swagger/OpenAPI docs
+- **🐳 Docker Ready:** MySQL database with Docker Compose
+- **🎨 Modern UI:** Next.js 15 with Radix UI components and TailwindCSS
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- Docker Desktop
+
+### Setup (5 minutes)
+
+```bash
+# 1. Start database
+docker-compose up -d
+
+# 2. Setup backend
+cd back
+npm install
+npm run prisma:generate
+npx prisma migrate dev
+npx prisma db seed  # Optional: creates test accounts
+
+# 3. Setup frontend  
+cd ../front
+npm install
+
+# 4. Start both servers (in separate terminals)
+cd back && npm run start:dev
+cd front && npm run dev
+```
+
+**Access:**
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:3000
+- API Docs: http://localhost:3000/api/docs
+- Database UI: http://localhost:8080 (phpMyAdmin)
+
+### First User Setup
+
+**Development:** Run `npx prisma db seed` to create test accounts:
+- Admin: `admin` / `admin123`
+- User: `user` / `user123`
+
+**Production:** The first user to register through the UI automatically becomes admin. See `PRODUCTION_DEPLOYMENT.md`.
+
+## 📖 Documentation
+
+- **[SETUP.md](SETUP.md)** - Detailed setup instructions
+- **[MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md)** - How to test all features manually
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Production deployment guide
+- **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Architecture improvements and technical decisions
 
 Built as a monorepo with a **NestJS** backend and **Next.js** frontend, Autho demonstrates how to implement secure authentication flows, role-based access control, and comprehensive API documentation in a full-stack TypeScript application.
 

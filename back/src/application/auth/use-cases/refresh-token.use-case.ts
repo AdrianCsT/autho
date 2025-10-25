@@ -20,6 +20,12 @@ export class RefreshTokenUseCase {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    // Check if token is revoked
+    const isRevoked = await this.tokenService.isTokenRevoked(refreshToken);
+    if (isRevoked) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
     // Check if token is expired
     if (storedToken.expiresAt < new Date()) {
       // Remove expired token
