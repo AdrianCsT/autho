@@ -10,6 +10,9 @@ import { DocumentationSetupService, DocumentationLoggerService } from './common/
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // Set global API prefix for versioning
+  app.setGlobalPrefix('api/v1');
+  
   // Enable CORS for frontend communication
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3001',
